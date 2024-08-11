@@ -1,19 +1,20 @@
 {
   "manifest_version": 3,
-  "name": "Canvas Classmate Finder",
+  "name": "Canvas User Finder",
   "version": "1.0",
+  "description": "Finds users in multiple classes on Canvas.",
   "permissions": ["storage", "activeTab", "scripting"],
-  "action": {
-    "default_popup": "popup.html"
-  },
   "background": {
     "service_worker": "background.js"
   },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Canvas User Finder"
+  },
   "content_scripts": [
     {
-      "matches": ["https://bcourses.berkeley.edu/*"],
+      "matches": ["*://*.bcourses.berkeley.edu/*"],
       "js": ["content.js"]
     }
-  ],
-  "host_permissions": ["https://bcourses.berkeley.edu/*"]
+  ]
 }

@@ -1,11 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Classmate Finder</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas User Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            width: 400px;
+        }
+        #courses {
+            margin-bottom: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
 </head>
 <body>
-  <h1>Classmate Finder</h1>
-  <button id="run-button">Run</button>
-  <script src="popup.js"></script>
+    <h1>Canvas User Finder</h1>
+    <div id="courses">Loading courses...</div>
+    <button id="start-scanning">Start Scanning</button>
+    <script src="popup.js"></script>
 </body>
 </html>
