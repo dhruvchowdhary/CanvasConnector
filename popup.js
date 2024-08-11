@@ -7,7 +7,6 @@ document.getElementById("start-scanning").addEventListener("click", () => {
     }
   });
 
-  // Debug: Log the selected courses
   console.log("Selected Courses: ", selectedCourses);
 
   // Save the selected courses to local storage
@@ -18,10 +17,10 @@ document.getElementById("start-scanning").addEventListener("click", () => {
         stopScript: false,
         currentIndex: 0,
         processingComplete: false,
-        totalPeopleScanned: 0, // Reset the total people scanned counter
-        duplicateUsers: {}, // Reset duplicates
-        userCourseMap: {}, // Reset user course map
-        scriptStarted: true, // Set the script started flag to true
+        totalPeopleScanned: 0,
+        duplicateUsers: {},
+        userCourseMap: {},
+        scriptStarted: true, // Only set to true when scanning starts
       },
       () => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -32,7 +31,7 @@ document.getElementById("start-scanning").addEventListener("click", () => {
             },
             () => {
               updateStatus("Processing... Starting to scan courses.");
-              chrome.tabs.sendMessage(tabs[0].id, { action: "startScanning" }); // Send a message to start scanning
+              chrome.tabs.sendMessage(tabs[0].id, { action: "startScanning" });
             }
           );
         });
@@ -50,7 +49,6 @@ function updateStatus(status) {
   const statusDiv = document.getElementById("status");
   statusDiv.textContent = status;
 
-  // Retrieve the current progress
   chrome.storage.local.get(["currentIndex", "totalPeopleScanned"], (data) => {
     const coursesProcessed = data.currentIndex || 0;
     const totalPeopleScanned = data.totalPeopleScanned || 0;
@@ -72,15 +70,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Load courses and status when the popup is opened
   chrome.storage.local.get(
     ["coursesWithPeopleTab", "duplicateUsers", "selectedCourses"],
     (data) => {
       const coursesWithPeopleTab = data.coursesWithPeopleTab || [];
-      console.log(
-        "Courses with People Tab loaded in Popup:",
-        coursesWithPeopleTab
-      );
       const selectedCourses =
         data.selectedCourses || coursesWithPeopleTab.map((course) => course.id);
       updateCourseList(coursesWithPeopleTab, selectedCourses);
@@ -89,12 +82,10 @@ document.addEventListener("DOMContentLoaded", () => {
         displayDuplicates(data.duplicateUsers);
       }
 
-      // Also update the initial status and progress in the popup
-      updateStatus("Idle");
+      updateStatus(""); // Clear status on load
     }
   );
 });
-
 
 function updateCourseList(coursesWithPeopleTab, selectedCourses) {
   const courseList = document.getElementById("courseList");
@@ -128,9 +119,10 @@ function displayDuplicates(duplicates) {
     return;
   }
 
-  for (const [name, courses] of Object.entries(duplicates)) {
+  for (const [name, data] of Object.entries(duplicates)) {
+    const userLink = `<a href="${data.link}" target="_blank">${name}</a>`;
     const duplicateDiv = document.createElement("div");
-    duplicateDiv.textContent = `${name} is in: ${courses.join(", ")}`;
+    duplicateDiv.innerHTML = `${userLink} is in: ${data.courses.join(", ")}`;
     duplicatesDiv.appendChild(duplicateDiv);
   }
 }
