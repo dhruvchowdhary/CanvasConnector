@@ -5,6 +5,7 @@ document.getElementById("start-scanning").addEventListener("click", () => {
       stopScript: false,
       currentIndex: 0,
       processingComplete: false,
+      totalPeopleScanned: 0, // Reset the total people scanned counter
     },
     () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -25,6 +26,18 @@ document.getElementById("start-scanning").addEventListener("click", () => {
 function updateStatus(status) {
   const statusDiv = document.getElementById("status");
   statusDiv.textContent = status;
+
+  // Retrieve the current progress
+  chrome.storage.local.get(["currentIndex", "totalPeopleScanned"], (data) => {
+    const coursesProcessed = data.currentIndex || 0;
+    const totalPeopleScanned = data.totalPeopleScanned || 0;
+
+    const coursesDiv = document.getElementById("coursesProcessed");
+    const peopleDiv = document.getElementById("peopleScanned");
+
+    coursesDiv.textContent = `Courses Processed: ${coursesProcessed}`;
+    peopleDiv.textContent = `People Scanned: ${totalPeopleScanned}`;
+  });
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -35,29 +48,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 document.addEventListener("DOMContentLoaded", () => {
   // Load courses and status when the popup is opened
-  chrome.storage.local.get(
-    ["coursesWithPeopleTab", "DASHBOARD_COURSES"],
-    (data) => {
-      const courses = data.DASHBOARD_COURSES || [];
-      const coursesWithPeopleTab = data.coursesWithPeopleTab || [];
-      updateCourseList(courses, coursesWithPeopleTab);
-    }
-  );
+  chrome.storage.local.get(["coursesWithPeopleTab"], (data) => {
+    const coursesWithPeopleTab = data.coursesWithPeopleTab || [];
+    updateCourseList(coursesWithPeopleTab);
+
+    // Also update the initial status and progress in the popup
+    updateStatus("Idle");
+  });
 });
 
-function updateCourseList(courses, coursesWithPeopleTab) {
+function updateCourseList(coursesWithPeopleTab) {
   const coursesDiv = document.getElementById("courses");
   coursesDiv.innerHTML = "";
 
-  const coursesWithPeopleIds = coursesWithPeopleTab.map((course) => course.id);
-
-  courses.forEach((course) => {
+  coursesWithPeopleTab.forEach((course) => {
     const courseDiv = document.createElement("div");
-    courseDiv.textContent = course.originalName;
-
-    if (!coursesWithPeopleIds.includes(course.id)) {
-      courseDiv.style.color = "grey";
-    }
+    courseDiv.textContent = course.name;
 
     coursesDiv.appendChild(courseDiv);
   });

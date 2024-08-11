@@ -10,16 +10,21 @@
             padding: 10px;
             width: 400px;
         }
-        #courses {
+        #status {
+            font-weight: bold;
             margin-bottom: 10px;
-            max-height: 200px;
-            overflow-y: auto;
+        }
+        #courses div {
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
     <h1>Canvas User Finder</h1>
-    <div id="courses">Loading courses...</div>
+    <div id="status">Idle</div>
+    <div id="coursesProcessed">Courses Processed: 0</div>
+    <div id="peopleScanned">People Scanned: 0</div>
+    <div id="courses"></div>
     <button id="start-scanning">Start Scanning</button>
     <script src="popup.js"></script>
 </body>

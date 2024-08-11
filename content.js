@@ -17,14 +17,24 @@
 
   async function processNextCourse() {
     chrome.storage.local.get(
-      ["coursesWithPeopleTab", "currentIndex", "stopScript"],
+      [
+        "coursesWithPeopleTab",
+        "currentIndex",
+        "stopScript",
+        "totalPeopleScanned",
+      ],
       async (data) => {
         let courses = data.coursesWithPeopleTab || [];
         let currentIndex = data.currentIndex || 0;
         let stopScript = data.stopScript || false;
+        let totalPeopleScanned = data.totalPeopleScanned || 0;
 
         if (stopScript) {
-          updateStatus("Stopped by user.");
+          updatePopupStatus(
+            "Stopped by user.",
+            currentIndex,
+            totalPeopleScanned
+          );
           return;
         }
 
@@ -38,7 +48,11 @@
           // Navigate to the next course's "People" tab
           window.location.href = course.link;
         } else {
-          updateStatus("Complete. All courses processed.");
+          updatePopupStatus(
+            "Complete. All courses processed.",
+            currentIndex,
+            totalPeopleScanned
+          );
           await chrome.storage.local.set({ processingComplete: true });
 
           // Log stored data
@@ -50,8 +64,13 @@
     );
   }
 
-  function updateStatus(status) {
-    chrome.runtime.sendMessage({ action: "updateStatus", status: status });
+  function updatePopupStatus(status, coursesProcessed, totalPeopleScanned) {
+    chrome.runtime.sendMessage({
+      action: "updateStatus",
+      status: status,
+      coursesProcessed: coursesProcessed,
+      totalPeopleScanned: totalPeopleScanned,
+    });
   }
 
   async function extractAndProceed() {
@@ -63,32 +82,43 @@
       let users = extractUsers(document);
       console.log("Users extracted:", users);
 
-      chrome.storage.local.get("extractedUsers", async (data) => {
-        let allUsers = data.extractedUsers || {};
+      chrome.storage.local.get(
+        ["extractedUsers", "totalPeopleScanned"],
+        async (data) => {
+          let allUsers = data.extractedUsers || {};
+          let totalPeopleScanned = data.totalPeopleScanned || 0;
 
-        // Safely get the course name
-        let courseNameElement =
-          document.querySelector("h1.course-title") ||
-          document.querySelector(
-            "#breadcrumbs ul li:nth-last-child(2) span.ellipsible"
-          );
-        let courseName = courseNameElement
-          ? courseNameElement.innerText.trim()
-          : "Unknown Course";
+          // Safely get the course name
+          let courseNameElement =
+            document.querySelector("h1.course-title") ||
+            document.querySelector(
+              "#breadcrumbs ul li:nth-last-child(2) span.ellipsible"
+            );
+          let courseName = courseNameElement
+            ? courseNameElement.innerText.trim()
+            : "Unknown Course";
 
-        allUsers[courseName] = users;
+          allUsers[courseName] = users;
+          totalPeopleScanned += users.length;
 
-        await chrome.storage.local.set({ extractedUsers: allUsers });
-        console.log(`Stored users for ${courseName}.`);
+          await chrome.storage.local.set({
+            extractedUsers: allUsers,
+            totalPeopleScanned: totalPeopleScanned,
+          });
+          console.log(`Stored users for ${courseName}.`);
 
-        // Log stored data after each course
-        chrome.storage.local.get("extractedUsers", (data) => {
-          console.log("Current extracted users:", data.extractedUsers);
-        });
-
-        // Proceed to the next course
-        await processNextCourse();
-      });
+          // Update the popup with the current progress
+          chrome.storage.local.get("currentIndex", async (data) => {
+            let currentIndex = data.currentIndex || 0;
+            updatePopupStatus(
+              "Scanning in progress...",
+              currentIndex,
+              totalPeopleScanned
+            );
+            await processNextCourse();
+          });
+        }
+      );
     } catch (error) {
       console.error("Error during extraction or timeout occurred:", error);
       await processNextCourse();
