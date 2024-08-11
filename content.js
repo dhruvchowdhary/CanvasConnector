@@ -22,12 +22,14 @@
         "currentIndex",
         "stopScript",
         "totalPeopleScanned",
+        "userCourseMap",
       ],
       async (data) => {
         let courses = data.coursesWithPeopleTab || [];
         let currentIndex = data.currentIndex || 0;
         let stopScript = data.stopScript || false;
         let totalPeopleScanned = data.totalPeopleScanned || 0;
+        let userCourseMap = data.userCourseMap || {};
 
         if (stopScript) {
           updatePopupStatus(
@@ -48,17 +50,13 @@
           // Navigate to the next course's "People" tab
           window.location.href = course.link;
         } else {
+          await chrome.storage.local.set({ processingComplete: true });
+          identifyAndStoreDuplicates(userCourseMap);
           updatePopupStatus(
             "Complete. All courses processed.",
             currentIndex,
             totalPeopleScanned
           );
-          await chrome.storage.local.set({ processingComplete: true });
-
-          // Log stored data
-          chrome.storage.local.get("extractedUsers", (data) => {
-            console.log("All extracted users:", data.extractedUsers);
-          });
         }
       }
     );
@@ -83,9 +81,9 @@
       console.log("Users extracted:", users);
 
       chrome.storage.local.get(
-        ["extractedUsers", "totalPeopleScanned"],
+        ["userCourseMap", "totalPeopleScanned"],
         async (data) => {
-          let allUsers = data.extractedUsers || {};
+          let userCourseMap = data.userCourseMap || {};
           let totalPeopleScanned = data.totalPeopleScanned || 0;
 
           // Safely get the course name
@@ -98,11 +96,17 @@
             ? courseNameElement.innerText.trim()
             : "Unknown Course";
 
-          allUsers[courseName] = users;
+          users.forEach((user) => {
+            if (!userCourseMap[user.name]) {
+              userCourseMap[user.name] = [];
+            }
+            userCourseMap[user.name].push(courseName);
+          });
+
           totalPeopleScanned += users.length;
 
           await chrome.storage.local.set({
-            extractedUsers: allUsers,
+            userCourseMap: userCourseMap,
             totalPeopleScanned: totalPeopleScanned,
           });
           console.log(`Stored users for ${courseName}.`);
@@ -125,6 +129,25 @@
     }
   }
 
+  function identifyAndStoreDuplicates(userCourseMap) {
+    const duplicates = {};
+
+    for (const [name, courses] of Object.entries(userCourseMap)) {
+      if (courses.length > 1) {
+        duplicates[name] = courses;
+      }
+    }
+
+    chrome.storage.local.set({ duplicateUsers: duplicates }, () => {
+      console.log("Duplicate users identified:", duplicates);
+      // Notify the popup that duplicates have been identified
+      chrome.runtime.sendMessage({
+        action: "duplicatesIdentified",
+        duplicates: duplicates,
+      });
+    });
+  }
+
   // If we are on a /users page, process it
   if (window.location.href.includes("/users")) {
     await extractAndProceed();
@@ -141,17 +164,7 @@
       const nameElement = row.querySelector("td a.roster_user_name");
       const name = nameElement ? nameElement.innerText.trim() : "";
 
-      const sectionElements = row.querySelectorAll(
-        'td[data-testid="section-column-cell"] .section'
-      );
-      const sections = Array.from(sectionElements).map((sectionElement) =>
-        sectionElement.innerText.trim()
-      );
-
-      users.push({
-        name: name,
-        sections: sections,
-      });
+      users.push({ name });
     });
 
     return users;

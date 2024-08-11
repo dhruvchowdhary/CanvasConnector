@@ -6,6 +6,8 @@ document.getElementById("start-scanning").addEventListener("click", () => {
       currentIndex: 0,
       processingComplete: false,
       totalPeopleScanned: 0, // Reset the total people scanned counter
+      duplicateUsers: {}, // Reset duplicates
+      userCourseMap: {}, // Reset user course map
     },
     () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -43,18 +45,27 @@ function updateStatus(status) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "updateStatus") {
     updateStatus(message.status);
+  } else if (message.action === "duplicatesIdentified") {
+    displayDuplicates(message.duplicates);
   }
 });
 
 document.addEventListener("DOMContentLoaded", () => {
   // Load courses and status when the popup is opened
-  chrome.storage.local.get(["coursesWithPeopleTab"], (data) => {
-    const coursesWithPeopleTab = data.coursesWithPeopleTab || [];
-    updateCourseList(coursesWithPeopleTab);
+  chrome.storage.local.get(
+    ["coursesWithPeopleTab", "duplicateUsers"],
+    (data) => {
+      const coursesWithPeopleTab = data.coursesWithPeopleTab || [];
+      updateCourseList(coursesWithPeopleTab);
 
-    // Also update the initial status and progress in the popup
-    updateStatus("Idle");
-  });
+      if (data.duplicateUsers) {
+        displayDuplicates(data.duplicateUsers);
+      }
+
+      // Also update the initial status and progress in the popup
+      updateStatus("Idle");
+    }
+  );
 });
 
 function updateCourseList(coursesWithPeopleTab) {
@@ -67,4 +78,20 @@ function updateCourseList(coursesWithPeopleTab) {
 
     coursesDiv.appendChild(courseDiv);
   });
+}
+
+function displayDuplicates(duplicates) {
+  const duplicatesDiv = document.getElementById("duplicates");
+  duplicatesDiv.innerHTML = "";
+
+  if (Object.keys(duplicates).length === 0) {
+    duplicatesDiv.textContent = "No duplicates found.";
+    return;
+  }
+
+  for (const [name, courses] of Object.entries(duplicates)) {
+    const duplicateDiv = document.createElement("div");
+    duplicateDiv.textContent = `${name} is in: ${courses.join(", ")}`;
+    duplicatesDiv.appendChild(duplicateDiv);
+  }
 }
