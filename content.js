@@ -98,6 +98,10 @@ async function extractAndProceed() {
     await waitForElement("tr.rosterUser", 10000);
     console.log("User list detected, proceeding with extraction.");
 
+    // Scroll and load all users
+    await scrollAndLoadAllUsers();
+
+    // Extract users after all have been loaded
     let users = extractUsers(document);
     console.log("Users extracted:", users);
 
@@ -150,6 +154,35 @@ async function extractAndProceed() {
   }
 }
 
+async function scrollAndLoadAllUsers() {
+  let lastHeight = document.body.scrollHeight;
+  while (true) {
+    window.scrollTo(0, document.body.scrollHeight);
+    await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait for 3 seconds to load the next set of users
+
+    let newHeight = document.body.scrollHeight;
+    if (newHeight === lastHeight) {
+      break; // No more users are being loaded
+    }
+    lastHeight = newHeight;
+  }
+}
+
+function extractUsers(doc) {
+  let users = [];
+
+  const userRows = doc.querySelectorAll("tr.rosterUser");
+
+  userRows.forEach((row) => {
+    const nameElement = row.querySelector("td a.roster_user_name");
+    const name = nameElement ? nameElement.innerText.trim() : "";
+
+    users.push({ name });
+  });
+
+  return users;
+}
+
 function identifyAndStoreDuplicates(userCourseMap) {
   const duplicates = {};
 
@@ -167,21 +200,6 @@ function identifyAndStoreDuplicates(userCourseMap) {
       duplicates: duplicates,
     });
   });
-}
-
-function extractUsers(doc) {
-  let users = [];
-
-  const userRows = doc.querySelectorAll("tr.rosterUser");
-
-  userRows.forEach((row) => {
-    const nameElement = row.querySelector("td a.roster_user_name");
-    const name = nameElement ? nameElement.innerText.trim() : "";
-
-    users.push({ name });
-  });
-
-  return users;
 }
 
 async function waitForElement(selector, timeout = 10000) {
