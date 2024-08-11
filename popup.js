@@ -7,6 +7,7 @@ document.getElementById("start-scanning").addEventListener("click", () => {
     }
   });
 
+  // Debug: Log the selected courses
   console.log("Selected Courses: ", selectedCourses);
 
   // Save the selected courses to local storage
@@ -17,10 +18,10 @@ document.getElementById("start-scanning").addEventListener("click", () => {
         stopScript: false,
         currentIndex: 0,
         processingComplete: false,
-        totalPeopleScanned: 0,
-        duplicateUsers: {},
-        userCourseMap: {},
-        scriptStarted: true, // Only set to true when scanning starts
+        totalPeopleScanned: 0, // Reset the total people scanned counter
+        duplicateUsers: {}, // Reset duplicates
+        userCourseMap: {}, // Reset user course map
+        scriptStarted: true, // Set the script started flag to true
       },
       () => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -31,7 +32,7 @@ document.getElementById("start-scanning").addEventListener("click", () => {
             },
             () => {
               updateStatus("Processing... Starting to scan courses.");
-              chrome.tabs.sendMessage(tabs[0].id, { action: "startScanning" });
+              chrome.tabs.sendMessage(tabs[0].id, { action: "startScanning" }); // Send a message to start scanning
             }
           );
         });
@@ -49,6 +50,7 @@ function updateStatus(status) {
   const statusDiv = document.getElementById("status");
   statusDiv.textContent = status;
 
+  // Retrieve the current progress
   chrome.storage.local.get(["currentIndex", "totalPeopleScanned"], (data) => {
     const coursesProcessed = data.currentIndex || 0;
     const totalPeopleScanned = data.totalPeopleScanned || 0;
@@ -70,13 +72,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Load courses and status when the popup is opened
   chrome.storage.local.get(
-    ["coursesWithPeopleTab", "duplicateUsers", "selectedCourses"],
+    ["coursesWithPeopleTab", "duplicateUsers", "courseCheckboxStates"],
     (data) => {
       const coursesWithPeopleTab = data.coursesWithPeopleTab || [];
-      const selectedCourses =
-        data.selectedCourses || coursesWithPeopleTab.map((course) => course.id);
-      updateCourseList(coursesWithPeopleTab, selectedCourses);
+      const courseCheckboxStates = data.courseCheckboxStates || {};
+
+      updateCourseList(coursesWithPeopleTab, courseCheckboxStates);
 
       if (data.duplicateUsers) {
         displayDuplicates(data.duplicateUsers);
@@ -87,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 });
 
-function updateCourseList(coursesWithPeopleTab, selectedCourses) {
+function updateCourseList(coursesWithPeopleTab, courseCheckboxStates) {
   const courseList = document.getElementById("courseList");
   courseList.innerHTML = "";
 
@@ -98,8 +101,17 @@ function updateCourseList(coursesWithPeopleTab, selectedCourses) {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.className = "course-checkbox";
-    checkbox.checked = selectedCourses.includes(course.id);
+    checkbox.checked =
+      courseCheckboxStates[course.id] !== undefined
+        ? courseCheckboxStates[course.id]
+        : true;
     checkbox.dataset.courseId = course.id;
+
+    // Save the checkbox state whenever it is toggled
+    checkbox.addEventListener("change", () => {
+      courseCheckboxStates[course.id] = checkbox.checked;
+      chrome.storage.local.set({ courseCheckboxStates: courseCheckboxStates });
+    });
 
     const label = document.createElement("label");
     label.textContent = course.name;
