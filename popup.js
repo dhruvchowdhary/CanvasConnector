@@ -8,6 +8,7 @@ document.getElementById("start-scanning").addEventListener("click", () => {
       totalPeopleScanned: 0, // Reset the total people scanned counter
       duplicateUsers: {}, // Reset duplicates
       userCourseMap: {}, // Reset user course map
+      scriptStarted: true, // Set the script started flag to true
     },
     () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -18,6 +19,7 @@ document.getElementById("start-scanning").addEventListener("click", () => {
           },
           () => {
             updateStatus("Processing... Starting to scan courses.");
+            chrome.tabs.sendMessage(tabs[0].id, { action: "startScanning" }); // Send a message to start scanning
           }
         );
       });
