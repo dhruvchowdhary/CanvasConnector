@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Canvas User Finder",
+  "name": "Canvas Connector",
   "version": "1.0",
-  "description": "Finds users in multiple classes on Canvas.",
+  "description": "Finds students in multiple of your classes on Canvas.",
   "permissions": ["storage", "activeTab", "scripting"],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Canvas User Finder"
+    "default_title": "Canvas Connector"
   },
   "content_scripts": [
     {
