@@ -1,11 +1,40 @@
+document.getElementById("start-scanning").addEventListener("click", () => {
+  // Reset the necessary variables and clear the storage
+  chrome.storage.local.set(
+    {
+      stopScript: false,
+      currentIndex: 0,
+      processingComplete: false,
+    },
+    () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        chrome.scripting.executeScript(
+          {
+            target: { tabId: tabs[0].id },
+            files: ["content.js"],
+          },
+          () => {
+            updateStatus("Processing... Starting to scan courses.");
+          }
+        );
+      });
+    }
+  );
+});
+
+function updateStatus(status) {
+  const statusDiv = document.getElementById("status");
+  statusDiv.textContent = status;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "updateCourses") {
-    updateCourseList(message.courses, message.coursesWithPeopleTab);
+  if (message.action === "updateStatus") {
+    updateStatus(message.status);
   }
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Load courses from storage when the popup is opened
+  // Load courses and status when the popup is opened
   chrome.storage.local.get(
     ["coursesWithPeopleTab", "DASHBOARD_COURSES"],
     (data) => {
@@ -33,17 +62,3 @@ function updateCourseList(courses, coursesWithPeopleTab) {
     coursesDiv.appendChild(courseDiv);
   });
 }
-
-document.getElementById("start-scanning").addEventListener("click", () => {
-  chrome.storage.local.get("coursesWithPeopleTab", (data) => {
-    let coursesWithPeopleTab = data.coursesWithPeopleTab || [];
-
-    if (coursesWithPeopleTab.length > 0) {
-      chrome.storage.local.set({ currentIndex: 0 }, () => {
-        window.location.href = coursesWithPeopleTab[0].link;
-      });
-    } else {
-      console.log("No courses with People tab to scan.");
-    }
-  });
-});
