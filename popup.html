@@ -17,6 +17,25 @@
         #courses div {
             margin-bottom: 5px;
         }
+        .dropdown {
+            margin-bottom: 10px;
+        }
+        .dropdown-content {
+            display: none;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            padding: 5px;
+        }
+        .dropdown-content.show {
+            display: block;
+        }
+        .course-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -24,7 +43,12 @@
     <div id="status">Idle</div>
     <div id="coursesProcessed">Courses Processed: 0</div>
     <div id="peopleScanned">People Scanned: 0</div>
-    <div id="courses"></div>
+
+    <div class="dropdown">
+        <button id="toggleCourses">Show/Hide Courses</button>
+        <div id="courseList" class="dropdown-content"></div>
+    </div>
+
     <div id="duplicates"></div>
     <button id="start-scanning">Start Scanning</button>
     <script src="popup.js"></script>

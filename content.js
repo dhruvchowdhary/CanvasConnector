@@ -8,6 +8,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function startScanning() {
+  console.log("Scanning started...");
   // Start the scanning process
   await processNextCourse();
 }
@@ -21,14 +22,27 @@ async function processNextCourse() {
       "totalPeopleScanned",
       "userCourseMap",
       "scriptStarted",
+      "selectedCourses",
     ],
     async (data) => {
       let courses = data.coursesWithPeopleTab || [];
+      let selectedCourses = (data.selectedCourses || []).map((id) =>
+        parseInt(id)
+      ); // Convert IDs to numbers
       let currentIndex = data.currentIndex || 0;
       let stopScript = data.stopScript || false;
       let totalPeopleScanned = data.totalPeopleScanned || 0;
       let userCourseMap = data.userCourseMap || {};
       let scriptStarted = data.scriptStarted || false;
+
+      console.log("Script started: ", scriptStarted);
+      console.log("Selected Courses: ", selectedCourses);
+      console.log("Available Courses with People Tab: ", courses);
+
+      // Filter the courses based on the selected courses
+      courses = courses.filter((course) => selectedCourses.includes(course.id));
+
+      console.log("Courses to process after filtering: ", courses);
 
       if (!scriptStarted || stopScript) {
         updatePopupStatus(
@@ -41,7 +55,14 @@ async function processNextCourse() {
 
       if (currentIndex < courses.length) {
         let course = courses[currentIndex];
-        console.log(`Navigating to: ${course.link}`);
+        console.log(`Navigating to course: ${course.name} (${course.id})`);
+
+        if (!course || !course.link) {
+          // Check for 'link' instead of 'peopleLink'
+          console.error("Invalid course or missing People link:", course);
+          await processNextCourse();
+          return;
+        }
 
         // Update the index before navigating
         await chrome.storage.local.set({ currentIndex: currentIndex + 1 });
@@ -62,6 +83,7 @@ async function processNextCourse() {
 }
 
 function updatePopupStatus(status, coursesProcessed, totalPeopleScanned) {
+  console.log("Updating status: ", status);
   chrome.runtime.sendMessage({
     action: "updateStatus",
     status: status,
@@ -180,6 +202,7 @@ async function waitForElement(selector, timeout = 10000) {
 
 // Run the extractAndProceed function only if we're on a /users page and the script has started
 chrome.storage.local.get("scriptStarted", (data) => {
+  console.log("Script started check on page load: ", data.scriptStarted);
   if (data.scriptStarted && window.location.href.includes("/users")) {
     extractAndProceed();
   }

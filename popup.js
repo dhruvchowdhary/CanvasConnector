@@ -1,30 +1,49 @@
 document.getElementById("start-scanning").addEventListener("click", () => {
-  // Reset the necessary variables and clear the storage
-  chrome.storage.local.set(
-    {
-      stopScript: false,
-      currentIndex: 0,
-      processingComplete: false,
-      totalPeopleScanned: 0, // Reset the total people scanned counter
-      duplicateUsers: {}, // Reset duplicates
-      userCourseMap: {}, // Reset user course map
-      scriptStarted: true, // Set the script started flag to true
-    },
-    () => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        chrome.scripting.executeScript(
-          {
-            target: { tabId: tabs[0].id },
-            files: ["content.js"],
-          },
-          () => {
-            updateStatus("Processing... Starting to scan courses.");
-            chrome.tabs.sendMessage(tabs[0].id, { action: "startScanning" }); // Send a message to start scanning
-          }
-        );
-      });
+  // Get the selected courses
+  const selectedCourses = [];
+  document.querySelectorAll(".course-checkbox").forEach((checkbox) => {
+    if (checkbox.checked) {
+      selectedCourses.push(checkbox.dataset.courseId);
     }
-  );
+  });
+
+  // Debug: Log the selected courses
+  console.log("Selected Courses: ", selectedCourses);
+
+  // Save the selected courses to local storage
+  chrome.storage.local.set({ selectedCourses: selectedCourses }, () => {
+    // Reset the necessary variables and clear the storage
+    chrome.storage.local.set(
+      {
+        stopScript: false,
+        currentIndex: 0,
+        processingComplete: false,
+        totalPeopleScanned: 0, // Reset the total people scanned counter
+        duplicateUsers: {}, // Reset duplicates
+        userCourseMap: {}, // Reset user course map
+        scriptStarted: true, // Set the script started flag to true
+      },
+      () => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          chrome.scripting.executeScript(
+            {
+              target: { tabId: tabs[0].id },
+              files: ["content.js"],
+            },
+            () => {
+              updateStatus("Processing... Starting to scan courses.");
+              chrome.tabs.sendMessage(tabs[0].id, { action: "startScanning" }); // Send a message to start scanning
+            }
+          );
+        });
+      }
+    );
+  });
+});
+
+document.getElementById("toggleCourses").addEventListener("click", () => {
+  const courseList = document.getElementById("courseList");
+  courseList.classList.toggle("show");
 });
 
 function updateStatus(status) {
@@ -55,10 +74,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 document.addEventListener("DOMContentLoaded", () => {
   // Load courses and status when the popup is opened
   chrome.storage.local.get(
-    ["coursesWithPeopleTab", "duplicateUsers"],
+    ["coursesWithPeopleTab", "duplicateUsers", "selectedCourses"],
     (data) => {
       const coursesWithPeopleTab = data.coursesWithPeopleTab || [];
-      updateCourseList(coursesWithPeopleTab);
+      console.log(
+        "Courses with People Tab loaded in Popup:",
+        coursesWithPeopleTab
+      );
+      const selectedCourses =
+        data.selectedCourses || coursesWithPeopleTab.map((course) => course.id);
+      updateCourseList(coursesWithPeopleTab, selectedCourses);
 
       if (data.duplicateUsers) {
         displayDuplicates(data.duplicateUsers);
@@ -70,15 +95,27 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 });
 
-function updateCourseList(coursesWithPeopleTab) {
-  const coursesDiv = document.getElementById("courses");
-  coursesDiv.innerHTML = "";
+
+function updateCourseList(coursesWithPeopleTab, selectedCourses) {
+  const courseList = document.getElementById("courseList");
+  courseList.innerHTML = "";
 
   coursesWithPeopleTab.forEach((course) => {
     const courseDiv = document.createElement("div");
-    courseDiv.textContent = course.name;
+    courseDiv.className = "course-item";
 
-    coursesDiv.appendChild(courseDiv);
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "course-checkbox";
+    checkbox.checked = selectedCourses.includes(course.id);
+    checkbox.dataset.courseId = course.id;
+
+    const label = document.createElement("label");
+    label.textContent = course.name;
+
+    courseDiv.appendChild(checkbox);
+    courseDiv.appendChild(label);
+    courseList.appendChild(courseDiv);
   });
 }
 
